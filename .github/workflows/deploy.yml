@@ -1,0 +1,57 @@
+name: Deploy CompareX
+
+on:
+  workflow_dispatch:
+
+jobs:
+
+  deploy:
+
+    runs-on: ubuntu-latest
+
+
+    steps:
+
+    - name: download artifact
+      uses: actions/download-artifact@v4
+
+      with:
+        name: comparex-wheel
+        path: dist
+
+
+    - name: copy wheel to VM
+      uses: appleboy/scp-action@v0.1.7
+
+      with:
+        host: ${{ secrets.GCP_VM_HOST }}
+        username: ${{ secrets.GCP_VM_USER }}
+        key: ${{ secrets.GCP_SSH_KEY }}
+
+        source: "dist/*.whl"
+        target: "~/comparex-backend"
+
+
+    - name: deploy wheel
+      uses: appleboy/ssh-action@v1.0.3
+
+      with:
+        host: ${{ secrets.GCP_VM_HOST }}
+        username: ${{ secrets.GCP_VM_USER }}
+        key: ${{ secrets.GCP_SSH_KEY }}
+
+        script: |
+
+          source $HOME/.local/bin/env
+
+          cd ~/comparex-backend
+
+          uv pip install dist/*.whl --upgrade
+
+          pm2 restart comparex-backend || pm2 start .venv/bin/python \
+            --name comparex-backend \
+            --restart-delay 10000 \
+            --max-restarts 3 \
+            -- -m uvicorn comparex.main:app --host 0.0.0.0 --port 8000
+
+          pm2 save
