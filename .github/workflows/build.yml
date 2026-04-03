@@ -11,26 +11,49 @@ jobs:
 
     steps:
 
-    - name: checkout
+    - name: Checkout repo
       uses: actions/checkout@v4
 
 
-    - name: install uv
-      run: curl -Ls https://astral.sh/uv/install.sh | sh
-
-
-    - name: build wheel
+    # install uv
+    - name: Install uv
       run: |
-        source $HOME/.local/bin/env
+        curl -Ls https://astral.sh/uv/install.sh | sh
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
 
+
+    # cache uv python downloads (speeds builds significantly)
+    - name: Cache uv
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/uv
+          ~/.local/share/uv
+        key: uv-${{ runner.os }}-python-3.12
+
+
+    # install deterministic python version
+    - name: Install Python 3.12
+      run: |
         uv python install 3.12
 
+
+    # build wheel
+    - name: Build wheel
+      run: |
         uv build
 
 
-    - name: upload artifact
+    # upload wheel artifact
+    - name: Upload wheel artifact
       uses: actions/upload-artifact@v4
-
       with:
         name: comparex-wheel
         path: dist/*.whl
+        retention-days: 7
+
+
+    # optional visibility in logs
+    - name: Show built files
+      run: |
+        ls -lh dist
