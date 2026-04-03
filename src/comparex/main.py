@@ -1,6 +1,6 @@
 from fastapi import FastAPI
-from app.reconcile_service import run_reconciliation
-from app.api import router as api_router
+from comparex.reconcile_service import run_reconciliation
+from comparex.api import router as api_router
 import uvicorn
 import os
 app = FastAPI(title="Excel Recon Engine")

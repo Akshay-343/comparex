@@ -4,7 +4,7 @@ from pathlib import Path
 import os
 import datetime
 import shutil
-from app.reconcile_service import run_reconciliation
+from comparex.reconcile_service import run_reconciliation
 
 router = APIRouter()
 

@@ -2,7 +2,7 @@ import pandas as pd
 from pathlib import Path
 from openpyxl import load_workbook
 from openpyxl.styles import PatternFill
-from app.config_loader import load_config
+from comparex.config_loader import load_config
 
 
 INPUT_DIR = Path("data/input")
