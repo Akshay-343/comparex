@@ -1,15 +1,13 @@
 import yaml
-from pathlib import Path
+from importlib.resources import files
 
 
-def load_config(config_name):
+def load_config(config_name: str):
 
-    path = Path(f"configs/{config_name}.yaml")
+    config_path = files("comparex.configs").joinpath(f"{config_name}.yaml")
 
-    if not path.exists():
-
+    if not config_path.is_file():
         raise Exception(f"Config not found: {config_name}")
 
-    with open(path) as f:
-
+    with config_path.open("r") as f:
         return yaml.safe_load(f)
