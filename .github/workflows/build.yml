@@ -1,0 +1,36 @@
+name: Build CompareX Wheel
+
+on:
+  workflow_dispatch:
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+    - name: checkout
+      uses: actions/checkout@v4
+
+
+    - name: install uv
+      run: curl -Ls https://astral.sh/uv/install.sh | sh
+
+
+    - name: build wheel
+      run: |
+        source $HOME/.local/bin/env
+
+        uv python install 3.12
+
+        uv build
+
+
+    - name: upload artifact
+      uses: actions/upload-artifact@v4
+
+      with:
+        name: comparex-wheel
+        path: dist/*.whl
