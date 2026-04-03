@@ -1,0 +1,188 @@
+job_name: fimmda_slv_compare
+
+datasets:
+  left:
+    name: fimmda
+    file_pattern: Final*.xlsx
+    header_row: 1
+
+    footer:
+      type: empty_key
+      column: isin
+
+
+  right:
+    name: 3cortex
+    file_pattern: Security*.xlsx
+    header_row: 1
+
+    footer:
+      type: empty_key
+      column: isin
+
+join:
+
+  keys:
+    - isin
+
+
+column_mapping:
+
+  sr_no:
+    left: Sr. No.
+    right: Sr. No.
+
+  isin:
+    left: ISIN
+    right: ISIN
+
+  issuer_name:
+    left: Name of Issuer
+    right: Name of Issuer
+
+  coupon:
+    left: Coupon Rate
+    right: Coupon Rate
+
+  maturity_date:
+    left: Maturity Date
+    right: Maturity Date
+
+  rating:
+    left: Rating
+    right: Rating
+
+  segment:
+    left: Segment of Issuer
+    right: Segment of Issuer
+
+  model_yield:
+    left: "Model Yield*"
+    right: "Model Yield*"
+
+  model_price:
+    left: "Model Price*"
+    right: "Model Price*"
+
+  yield_15d:
+    left: 15 days Yield
+    right: 15 days Yield
+
+  price_15d:
+    left: 15 days Price
+    right: 15 days Price
+
+  final_yield:
+    left: Final Yield
+    right: Final Yield
+
+  final_price:
+    left: Final price
+    right: Final price
+
+  remarks:
+    left: Remarks
+    right: Remarks
+
+
+
+columns:
+
+  sr_no:
+    type: float
+    ignore: true
+
+  isin:
+    type: string
+
+  issuer_name:
+    type: string
+
+  coupon:
+      type: float
+      label: coupon_rate
+      precision: 4
+      tolerance: preset_percent
+      transform:
+        left: "num*100"
+        right: "num if num==num else float(str(x).replace('%',''))"
+
+      highlight: true
+      color: "#e8f5e9"
+  maturity_date:
+    type: string
+
+  rating:
+    type: string
+
+  segment:
+    type: string
+
+  model_yield:
+    type: float
+    tolerance: preset_yield
+    highlight: true
+    color: "#ffd6d6"
+    summary: true
+    summary_precision: 2
+
+  model_price:
+    type: float
+    tolerance: preset_price
+    highlight: true
+    color: "#fff2cc"
+    summary: true
+    summary_precision: 2
+  yield_15d:
+    type: float
+    tolerance: preset_yield
+    highlight: true
+    color: "#ffd6d6"
+    summary: true
+    summary_precision: 2
+  price_15d:
+    type: float
+    tolerance: preset_price
+    highlight: true
+    color: "#fff2cc"
+    summary: true
+    summary_precision: 2
+
+  final_yield:
+    type: float
+    tolerance: preset_yield
+    summary: true
+    summary_precision: 2
+  final_price:
+    type: float
+    tolerance: preset_price
+    summary: true
+    summary_precision: 2
+  remarks:
+    type: string
+
+
+
+tolerance_presets:
+
+  preset_price:
+    abs: 0.01
+
+  preset_yield:
+    abs: 0.01
+
+  preset_percent:
+    abs: 0.000001
+
+
+
+output:
+
+  file_name: fimmda_slv_diff.xlsx
+
+
+
+options:
+
+  case_insensitive_strings: true
+  trim_strings: true
