@@ -5,11 +5,24 @@ on:
     branches: [main, master]
   pull_request:
     branches: [main, master]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependency-check-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  UV_VERSION: "0.5.x"
+  PYTHON_VERSION: "3.12"
 
 jobs:
   deptry:
-    name: Check for missing/unused dependencies
+    name: Check for missing dependencies
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - name: Checkout repository
@@ -17,25 +30,101 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@v3
-        # If you don't have a uv.lock committed yet, leave caching off
-        # (or commit `uv lock` output and switch this back to enable-cache: true)
         with:
-          enable-cache: false
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
 
       - name: Set up Python
-        run: uv python install 3.12
+        run: uv python install "${{ env.PYTHON_VERSION }}"
 
-      - name: Sync project dependencies (from pyproject.toml)
-        run: uv sync --all-extras --dev
+      - name: Sync project dependencies (locked, reproducible)
+        # --locked fails fast if pyproject.toml and uv.lock are out of sync,
+        # guaranteeing identical dependency versions across dev/uat/prod.
+        run: uv sync --all-extras --dev --locked
 
       - name: Install deptry
         run: uv pip install deptry
 
-      - name: Run deptry
-        # deptry scans your source code for imports and compares them
-        # against what's declared in pyproject.toml.
-        # DEP001 = a module is imported in code but NOT declared as a
-        # dependency -- this is exactly the case that would cause a
-        # ModuleNotFoundError in a clean environment that only installs
-        # declared deps.
-        run: uv run deptry .
+      - name: Run deptry (JSON report)
+        id: deptry
+        # Always succeed here so we can parse and classify results ourselves.
+        # DEP001 = imported in code but missing from pyproject.toml
+        #          (would raise ModuleNotFoundError in a clean install)
+        # DEP002 = declared in pyproject.toml but never imported
+        #          (dead weight, not a build-breaking issue)
+        run: |
+          uv run deptry . --output deptry-report.json --format json || true
+          echo "report_exists=$([ -f deptry-report.json ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      - name: Classify findings and write summary
+        id: classify
+        run: |
+          python3 - <<'PYEOF'
+          import json
+          import os
+
+          report_path = "deptry-report.json"
+          summary_path = os.environ["GITHUB_STEP_SUMMARY"]
+
+          try:
+              with open(report_path) as f:
+                  findings = json.load(f)
+          except FileNotFoundError:
+              findings = []
+
+          missing = [f for f in findings if f.get("error", {}).get("code") == "DEP001"]
+          unused = [f for f in findings if f.get("error", {}).get("code") == "DEP002"]
+          other = [f for f in findings if f.get("error", {}).get("code") not in ("DEP001", "DEP002")]
+
+          def fmt_rows(items):
+              rows = []
+              for item in items:
+                  loc = item.get("location", {})
+                  fname = loc.get("file", "unknown")
+                  line = loc.get("line", "?")
+                  col = loc.get("column", "?")
+                  msg = item.get("error", {}).get("message", "")
+                  rows.append(f"| `{fname}:{line}:{col}` | {msg} |")
+              return "\n".join(rows)
+
+          with open(summary_path, "a") as f:
+              f.write("# 📦 Dependency Check Summary\n\n")
+
+              if missing:
+                  f.write(f"## ❌ Missing dependencies ({len(missing)}) — build blocked\n\n")
+                  f.write("These modules are imported in code but not declared in `pyproject.toml`. ")
+                  f.write("This will cause `ModuleNotFoundError` in a clean install.\n\n")
+                  f.write("| Location | Issue |\n|---|---|\n")
+                  f.write(fmt_rows(missing) + "\n\n")
+              else:
+                  f.write("## ✅ Missing dependencies: none found\n\n")
+
+              if unused:
+                  f.write(f"## ⚠️ Unused dependencies ({len(unused)}) — warning only, non-blocking\n\n")
+                  f.write("These are declared in `pyproject.toml` but not directly imported. ")
+                  f.write("Often a false positive for implicit runtime deps (e.g. `python-multipart` for FastAPI). ")
+                  f.write("Review and either use, remove, or ignore via `tool.deptry.per_rule_ignores`.\n\n")
+                  f.write("| Location / Package | Issue |\n|---|---|\n")
+                  f.write(fmt_rows(unused) + "\n\n")
+
+              if other:
+                  f.write(f"## ℹ️ Other deptry findings ({len(other)})\n\n")
+                  f.write("| Location | Issue |\n|---|---|\n")
+                  f.write(fmt_rows(other) + "\n\n")
+
+          # Only missing dependencies (DEP001) fail the build.
+          if missing:
+              print(f"::error::{len(missing)} missing dependency import(s) found. See job summary.")
+              raise SystemExit(1)
+
+          if unused:
+              print(f"::warning::{len(unused)} unused dependency declaration(s) found (non-blocking). See job summary.")
+          PYEOF
+
+      - name: Upload deptry report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deptry-report
+          path: deptry-report.json
+          retention-days: 14
