@@ -1,6 +1,6 @@
 import yaml
 from importlib.resources import files
-import requests
+# import requests
 
 def load_config(config_name: str):
 
