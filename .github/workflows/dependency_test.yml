@@ -5,7 +5,7 @@ on:
     branches: [main, master]
   pull_request:
     branches: [main, master]
-  workflow_dispatch: 
+
 jobs:
   deptry:
     name: Check for missing/unused dependencies
@@ -17,13 +17,15 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@v3
+        # If you don't have a uv.lock committed yet, leave caching off
+        # (or commit `uv lock` output and switch this back to enable-cache: true)
         with:
-          enable-cache: true
+          enable-cache: false
 
       - name: Set up Python
         run: uv python install 3.12
 
-      - name: Sync project dependencies (from pyproject.toml / uv.lock)
+      - name: Sync project dependencies (from pyproject.toml)
         run: uv sync --all-extras --dev
 
       - name: Install deptry
