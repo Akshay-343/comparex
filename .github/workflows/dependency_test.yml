@@ -1,0 +1,39 @@
+name: Dependency Check
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch: 
+jobs:
+  deptry:
+    name: Check for missing/unused dependencies
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Sync project dependencies (from pyproject.toml / uv.lock)
+        run: uv sync --all-extras --dev
+
+      - name: Install deptry
+        run: uv pip install deptry
+
+      - name: Run deptry
+        # deptry scans your source code for imports and compares them
+        # against what's declared in pyproject.toml.
+        # DEP001 = a module is imported in code but NOT declared as a
+        # dependency -- this is exactly the case that would cause a
+        # ModuleNotFoundError in a clean environment that only installs
+        # declared deps.
+        run: uv run deptry .
