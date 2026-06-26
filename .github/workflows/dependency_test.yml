@@ -53,7 +53,7 @@ jobs:
         # DEP002 = declared in pyproject.toml but never imported
         #          (dead weight, not a build-breaking issue)
         run: |
-          uv run deptry . --output deptry-report.json --format json || true
+          uv run deptry . --json-output deptry-report.json || true
           echo "report_exists=$([ -f deptry-report.json ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
 
       - name: Classify findings and write summary
