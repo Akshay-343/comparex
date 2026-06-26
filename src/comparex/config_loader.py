@@ -1,6 +1,6 @@
 import yaml
 from importlib.resources import files
-import httpx
+import requests
 
 def load_config(config_name: str):
 
