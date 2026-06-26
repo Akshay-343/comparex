@@ -16,3 +16,5 @@ comparex = ["config/*.yaml"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
+[tool.deptry]
+known_first_party = ["comparex"]
