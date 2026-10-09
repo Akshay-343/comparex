@@ -1,0 +1,77 @@
+job_name: inventory_reconciliation
+
+# Compare inventory counts from two systems:
+# Warehouse Management System (WMS) vs ERP
+
+datasets:
+  left:
+    name: wms
+    file_pattern: wms_inventory*.xlsx
+    header_row: 0
+
+  right:
+    name: erp
+    file_pattern: erp_inventory*.xlsx
+    header_row: 0
+
+join:
+  keys:
+    - sku_code
+
+column_mapping:
+  sku_code:
+    left: SKU Code
+    right: SKU
+
+  product_name:
+    left: Product Name
+    right: Item Description
+
+  quantity:
+    left: Qty on Hand
+    right: Stock Qty
+
+  unit_price:
+    left: Unit Price
+    right: Price
+
+  category:
+    left: Category
+    right: Product Category
+
+columns:
+  sku_code:
+    type: string
+
+  product_name:
+    type: string
+
+  quantity:
+    type: float
+    tolerance: 0
+    highlight: true
+    color: "#ffd6d6"
+    summary: true
+    summary_precision: 0
+
+  unit_price:
+    type: float
+    tolerance: preset_price
+    highlight: true
+    color: "#fff2cc"
+    summary: true
+    summary_precision: 2
+
+  category:
+    type: string
+
+tolerance_presets:
+  preset_price:
+    abs: 0.01
+
+output:
+  file_name: inventory_diff.xlsx
+
+options:
+  case_insensitive_strings: true
+  trim_strings: true
